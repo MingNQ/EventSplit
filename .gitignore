@@ -1,0 +1,24 @@
+# .NET
+bin/
+obj/
+*.db
+*.db-wal
+*.db-shm
+
+# Node
+client/node_modules/
+client/dist/
+
+# IDE
+.vs/
+.vscode/
+*.user
+*.suo
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Env
+*.env
+appsettings.*.local.json

@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="EventSplit.Application/EventSplit.Application.csproj" />
+  <Project Path="EventSplit.Domain/EventSplit.Domain.csproj" />
+  <Project Path="EventSplit.Infrastructure/EventSplit.Infrastructure.csproj" />
+  <Project Path="EventSplit.WebAPI/EventSplit.WebAPI.csproj" />
+</Solution>
