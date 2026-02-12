@@ -1,0 +1,24 @@
+services:
+  eventsplit-api:
+    build:
+      context: ./src
+      dockerfile: Dockerfile
+    container_name: eventsplit-api
+    ports:
+      - "5000:8080"
+    volumes:
+      - eventsplit-data:/app/data
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__Default=Data Source=/app/data/eventsplit.db
+      - Jwt__Key=${JWT_KEY:-EventSplitSuperSecretKey12345678!}
+      - Jwt__Issuer=EventSplit
+      - Jwt__Audience=EventSplit
+      - Email__SmtpHost=${SMTP_HOST:-}
+      - Email__SmtpPort=${SMTP_PORT:-587}
+      - Email__From=${SMTP_FROM:-}
+      - Email__Password=${SMTP_PASSWORD:-}
+    restart: unless-stopped
+
+volumes:
+  eventsplit-data:
