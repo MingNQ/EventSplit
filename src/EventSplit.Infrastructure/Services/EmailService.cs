@@ -1,8 +1,9 @@
-using System.Net;
-using System.Net.Mail;
 using EventSplit.Application.Interfaces;
+using MailKit.Net.Smtp;
+using MailKit.Security;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using MimeKit;
 
 namespace EventSplit.Infrastructure.Services;
 
@@ -34,22 +35,25 @@ public class EmailService : IEmailService
         try
         {
             var port = int.TryParse(smtpPortStr, out var p) ? p : 587;
-            using var smtp = new SmtpClient(smtpHost, port)
-            {
-                EnableSsl = true,
-                Credentials = new NetworkCredential(fromEmail, password)
-            };
 
-            var mail = new MailMessage
-            {
-                From = new MailAddress(fromEmail, "EventSplit"),
-                Subject = subject,
-                Body = htmlBody,
-                IsBodyHtml = true
-            };
-            mail.To.Add(to);
+            var message = new MimeMessage();
+            message.From.Add(new MailboxAddress("EventSplit", fromEmail));
+            message.To.Add(MailboxAddress.Parse(to));
+            message.Subject = subject;
+            message.Body = new TextPart("html") { Text = htmlBody };
 
-            await smtp.SendMailAsync(mail);
+            using var client = new SmtpClient();
+            
+            // Use StartTls for port 587, SslOnConnect for port 465
+            var secureOption = port == 465 
+                ? SecureSocketOptions.SslOnConnect 
+                : SecureSocketOptions.StartTls;
+
+            await client.ConnectAsync(smtpHost, port, secureOption);
+            await client.AuthenticateAsync(fromEmail, password);
+            await client.SendAsync(message);
+            await client.DisconnectAsync(true);
+
             _logger.LogInformation("Email sent to {To}: {Subject}", to, subject);
         }
         catch (Exception ex)

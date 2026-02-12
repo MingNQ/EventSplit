@@ -1,10 +1,10 @@
-using System.Security.Claims;
 using EventSplit.Application.DTOs;
 using EventSplit.Application.Services;
+using EventSplit.WebAPI.Hubs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
-using EventSplit.WebAPI.Hubs;
+using System.Security.Claims;
 
 namespace EventSplit.WebAPI.Controllers;
 
@@ -51,7 +51,7 @@ public class EventController : ControllerBase
             return Ok(result);
         }
         catch (InvalidOperationException ex) { return NotFound(new { error = ex.Message }); }
-        catch (UnauthorizedAccessException ex) { return Forbid(); }
+        catch (UnauthorizedAccessException) { return Forbid(); }
     }
 
     [HttpPut("{id}")]
@@ -64,7 +64,7 @@ public class EventController : ControllerBase
             return Ok(result);
         }
         catch (InvalidOperationException ex) { return BadRequest(new { error = ex.Message }); }
-        catch (UnauthorizedAccessException ex) { return Forbid(); }
+        catch (UnauthorizedAccessException) { return Forbid(); }
     }
 
     [HttpDelete("{id}")]
@@ -76,7 +76,7 @@ public class EventController : ControllerBase
             return NoContent();
         }
         catch (InvalidOperationException ex) { return NotFound(new { error = ex.Message }); }
-        catch (UnauthorizedAccessException ex) { return Forbid(); }
+        catch (UnauthorizedAccessException) { return Forbid(); }
     }
 
     [HttpPost("{id}/participants")]
@@ -89,7 +89,7 @@ public class EventController : ControllerBase
             return Ok(result);
         }
         catch (InvalidOperationException ex) { return BadRequest(new { error = ex.Message }); }
-        catch (UnauthorizedAccessException ex) { return Forbid(); }
+        catch (UnauthorizedAccessException) { return Forbid(); }
     }
 
     [HttpDelete("{id}/participants/{participantId}")]
@@ -102,7 +102,7 @@ public class EventController : ControllerBase
             return NoContent();
         }
         catch (InvalidOperationException ex) { return BadRequest(new { error = ex.Message }); }
-        catch (UnauthorizedAccessException ex) { return Forbid(); }
+        catch (UnauthorizedAccessException) { return Forbid(); }
     }
 
     [HttpPost("{id}/participants/{participantId}/confirm")]
@@ -115,7 +115,7 @@ public class EventController : ControllerBase
             return Ok(result);
         }
         catch (InvalidOperationException ex) { return BadRequest(new { error = ex.Message }); }
-        catch (UnauthorizedAccessException ex) { return Forbid(); }
+        catch (UnauthorizedAccessException) { return Forbid(); }
     }
 
     [HttpPost("{id}/expenses")]
@@ -140,7 +140,7 @@ public class EventController : ControllerBase
             return NoContent();
         }
         catch (InvalidOperationException ex) { return BadRequest(new { error = ex.Message }); }
-        catch (UnauthorizedAccessException ex) { return Forbid(); }
+        catch (UnauthorizedAccessException) { return Forbid(); }
     }
 
     [HttpGet("{id}/qr")]
@@ -175,16 +175,35 @@ public class EventController : ControllerBase
         // Bank BIN lookup (common Vietnamese banks)
         var bankBins = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            ["VCB"] = "970436", ["TCB"] = "970407", ["MB"] = "970422",
-            ["ACB"] = "970416", ["TPB"] = "970423", ["VPB"] = "970432",
-            ["BIDV"] = "970418", ["VTB"] = "970415", ["SCB"] = "970429",
-            ["SHB"] = "970443", ["MSB"] = "970426", ["HDBank"] = "970437",
-            ["OCB"] = "970448", ["STB"] = "970403", ["EIB"] = "970431",
-            ["ABB"] = "970425", ["NAB"] = "970428", ["LPB"] = "970449",
-            ["BAB"] = "970409", ["NCB"] = "970419", ["PGB"] = "970430",
-            ["VIB"] = "970441", ["SEAB"] = "970440", ["CAKE"] = "546034",
-            ["Ubank"] = "546035", ["TIMO"] = "963388", ["VNPTMONEY"] = "971011",
-            ["VIETTEL"] = "971005", ["MOMO"] = "971003"
+            ["VCB"] = "970436",
+            ["TCB"] = "970407",
+            ["MB"] = "970422",
+            ["ACB"] = "970416",
+            ["TPB"] = "970423",
+            ["VPB"] = "970432",
+            ["BIDV"] = "970418",
+            ["VTB"] = "970415",
+            ["SCB"] = "970429",
+            ["SHB"] = "970443",
+            ["MSB"] = "970426",
+            ["HDBank"] = "970437",
+            ["OCB"] = "970448",
+            ["STB"] = "970403",
+            ["EIB"] = "970431",
+            ["ABB"] = "970425",
+            ["NAB"] = "970428",
+            ["LPB"] = "970449",
+            ["BAB"] = "970409",
+            ["NCB"] = "970419",
+            ["PGB"] = "970430",
+            ["VIB"] = "970441",
+            ["SEAB"] = "970440",
+            ["CAKE"] = "546034",
+            ["Ubank"] = "546035",
+            ["TIMO"] = "963388",
+            ["VNPTMONEY"] = "971011",
+            ["VIETTEL"] = "971005",
+            ["MOMO"] = "971003"
         };
 
         var bankBin = bankBins.TryGetValue(bankCode, out var bin) ? bin : bankCode;
