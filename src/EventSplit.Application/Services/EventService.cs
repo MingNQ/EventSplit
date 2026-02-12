@@ -20,12 +20,22 @@ public class EventService
     public async Task<EventResponse> CreateEventAsync(CreateEventRequest request, Guid creatorId)
     {
         // Input validation
-        if (request.TotalAmount <= 0)
-            throw new InvalidOperationException("Tổng số tiền phải lớn hơn 0.");
-        if (request.Deadline <= DateTime.UtcNow)
-            throw new InvalidOperationException("Hạn thanh toán phải ở tương lai.");
         if (string.IsNullOrWhiteSpace(request.Title))
             throw new InvalidOperationException("Tên sự kiện không được để trống.");
+
+        // Calculate total from expenses if provided
+        var totalAmount = request.TotalAmount;
+        if (request.InitialExpenses != null && request.InitialExpenses.Count > 0)
+        {
+            var expenseTotal = request.InitialExpenses.Sum(e => e.Amount);
+            if (totalAmount <= 0)
+                totalAmount = expenseTotal;
+        }
+
+        if (totalAmount <= 0)
+            throw new InvalidOperationException("Tổng số tiền phải lớn hơn 0.");
+        if (request.Deadline <= GetVietnamNow())
+            throw new InvalidOperationException("Hạn thanh toán phải ở tương lai.");
 
         var creator = await _db.Users.FindAsync(creatorId)
             ?? throw new InvalidOperationException("User not found.");
@@ -34,18 +44,53 @@ public class EventService
         {
             Title = request.Title,
             Description = request.Description,
-            TotalAmount = request.TotalAmount,
+            TotalAmount = totalAmount,
             Deadline = request.Deadline,
             BankCode = request.BankCode,
             BankAccountNumber = request.BankAccountNumber,
             BankAccountName = request.BankAccountName,
-            CreatorId = creatorId
+            CreatorId = creatorId,
+            CreatedAt = GetVietnamNow()
         };
 
         _db.Events.Add(ev);
+
+        // Create initial expenses if provided
+        var expenses = new List<EventExpense>();
+        if (request.InitialExpenses != null)
+        {
+            foreach (var item in request.InitialExpenses)
+            {
+                var expense = new EventExpense
+                {
+                    EventId = ev.Id,
+                    Description = item.Description,
+                    Amount = item.Amount,
+                    CreatedByUserId = creatorId,
+                    CreatedAt = GetVietnamNow()
+                };
+                _db.EventExpenses.Add(expense);
+                expenses.Add(expense);
+            }
+        }
+
+        // Add creator as participant if requested
+        var participants = new List<EventParticipant>();
+        if (request.CreatorJoins)
+        {
+            var creatorParticipant = new EventParticipant
+            {
+                EventId = ev.Id,
+                UserId = creatorId,
+                AmountToPay = totalAmount
+            };
+            _db.EventParticipants.Add(creatorParticipant);
+            participants.Add(creatorParticipant);
+        }
+
         await _db.SaveChangesAsync();
 
-        return MapToResponse(ev, creator, new List<EventParticipant>(), new List<EventExpense>());
+        return MapToResponse(ev, creator, participants, expenses);
     }
 
     public async Task<List<EventSummaryResponse>> GetMyEventsAsync(Guid userId)
@@ -106,7 +151,7 @@ public class EventService
         // Input validation
         if (request.TotalAmount <= 0)
             throw new InvalidOperationException("Tổng số tiền phải lớn hơn 0.");
-        if (request.Deadline <= DateTime.UtcNow)
+        if (request.Deadline <= GetVietnamNow())
             throw new InvalidOperationException("Hạn thanh toán phải ở tương lai.");
 
         ev.Title = request.Title;
@@ -162,19 +207,23 @@ public class EventService
         if (ev.Participants.Any(p => p.UserId == targetUser.Id))
             throw new InvalidOperationException("User is already a participant.");
 
+        // Recalculate split including the new participant
+        var count = ev.Participants.Count + 1;
+        var perPerson = Math.Round(ev.TotalAmount / count, 0);
+
+        // Update existing participants' amounts
+        foreach (var p in ev.Participants)
+            p.AmountToPay = perPerson;
+
+        // Create and add new participant with amount already set
         var participant = new EventParticipant
         {
             EventId = eventId,
-            UserId = targetUser.Id
+            UserId = targetUser.Id,
+            AmountToPay = perPerson
         };
 
-        ev.Participants.Add(participant);
-
-        // Recalculate split for all participants
-        var count = ev.Participants.Count;
-        var perPerson = Math.Round(ev.TotalAmount / count, 0);
-        foreach (var p in ev.Participants)
-            p.AmountToPay = perPerson;
+        _db.EventParticipants.Add(participant);
 
         await _db.SaveChangesAsync();
 
@@ -227,7 +276,7 @@ public class EventService
             throw new InvalidOperationException("Payment already confirmed.");
 
         participant.PaymentStatus = PaymentStatus.Paid;
-        participant.PaidAt = DateTime.UtcNow;
+        participant.PaidAt = GetVietnamNow();
         await _db.SaveChangesAsync();
 
         return new ParticipantResponse(
@@ -239,7 +288,10 @@ public class EventService
     // --- Expenses ---
     public async Task<ExpenseResponse> AddExpenseAsync(Guid eventId, CreateExpenseRequest request, Guid userId)
     {
-        var ev = await _db.Events.FindAsync(eventId)
+        var ev = await _db.Events
+            .Include(e => e.Participants)
+            .Include(e => e.Expenses)
+            .FirstOrDefaultAsync(e => e.Id == eventId)
             ?? throw new InvalidOperationException("Event not found.");
 
         var user = await _db.Users.FindAsync(userId)
@@ -250,13 +302,63 @@ public class EventService
             EventId = eventId,
             Description = request.Description,
             Amount = request.Amount,
-            CreatedByUserId = userId
+            CreatedByUserId = userId,
+            CreatedAt = GetVietnamNow()
         };
 
         _db.EventExpenses.Add(expense);
+
+        // Recalculate TotalAmount = sum of all expenses
+        // (ev.Expenses already includes the new expense via EF relationship fixup)
+        ev.TotalAmount = ev.Expenses.Sum(e => e.Amount);
+
+        // Recalculate split for all participants
+        if (ev.Participants.Count > 0)
+        {
+            var perPerson = Math.Round(ev.TotalAmount / ev.Participants.Count, 0);
+            foreach (var p in ev.Participants)
+                p.AmountToPay = perPerson;
+        }
+
         await _db.SaveChangesAsync();
 
         return new ExpenseResponse(expense.Id, expense.Description, expense.Amount, user.FullName, expense.CreatedAt);
+    }
+
+    public async Task DeleteExpenseAsync(Guid eventId, Guid expenseId, Guid userId)
+    {
+        var ev = await _db.Events
+            .Include(e => e.Participants)
+            .Include(e => e.Expenses)
+            .FirstOrDefaultAsync(e => e.Id == eventId)
+            ?? throw new InvalidOperationException("Event not found.");
+
+        var expense = ev.Expenses.FirstOrDefault(e => e.Id == expenseId)
+            ?? throw new InvalidOperationException("Expense not found.");
+
+        // Only creator or expense author can delete
+        if (ev.CreatorId != userId && expense.CreatedByUserId != userId)
+            throw new UnauthorizedAccessException("Not authorized to delete this expense.");
+
+        _db.EventExpenses.Remove(expense);
+
+        // Recalculate TotalAmount = sum of remaining expenses
+        ev.TotalAmount = ev.Expenses.Where(e => e.Id != expenseId).Sum(e => e.Amount);
+
+        // Recalculate split for all participants
+        if (ev.Participants.Count > 0 && ev.TotalAmount > 0)
+        {
+            var perPerson = Math.Round(ev.TotalAmount / ev.Participants.Count, 0);
+            foreach (var p in ev.Participants)
+                p.AmountToPay = perPerson;
+        }
+        else if (ev.Participants.Count > 0)
+        {
+            foreach (var p in ev.Participants)
+                p.AmountToPay = 0;
+        }
+
+        await _db.SaveChangesAsync();
     }
 
     // --- Overdue Job ---
@@ -267,7 +369,7 @@ public class EventService
         var overdueParticipants = await _db.EventParticipants
             .Include(p => p.Event)
             .Include(p => p.User)
-            .Where(p => p.PaymentStatus == PaymentStatus.Pending && p.Event.Deadline < DateTime.UtcNow)
+            .Where(p => p.PaymentStatus == PaymentStatus.Pending && p.Event.Deadline < GetVietnamNow())
             .ToListAsync();
 
         foreach (var p in overdueParticipants)
@@ -324,6 +426,12 @@ public class EventService
     }
 
     // --- Helpers ---
+    private static DateTime GetVietnamNow()
+    {
+        var vnZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+        return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, vnZone);
+    }
+
     private static EventResponse MapToResponse(Event ev, User creator, List<EventParticipant> participants, List<EventExpense> expenses)
     {
         return new EventResponse(

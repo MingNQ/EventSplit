@@ -14,6 +14,8 @@ export default function EventDetailPage() {
   const [addingParticipant, setAddingParticipant] = useState(false);
   const [error, setError] = useState('');
   const [showQR, setShowQR] = useState(false);
+  const [qrImageUrl, setQrImageUrl] = useState(null);
+  const [qrLoading, setQrLoading] = useState(false);
   const [expenseDesc, setExpenseDesc] = useState('');
   const [expenseAmount, setExpenseAmount] = useState('');
   const [addingExpense, setAddingExpense] = useState(false);
@@ -78,6 +80,7 @@ export default function EventDetailPage() {
     connection.on('ParticipantRemoved', () => loadEvent());
     connection.on('EventUpdated', () => loadEvent());
     connection.on('ExpenseAdded', () => loadEvent());
+    connection.on('ExpenseDeleted', () => loadEvent());
     connection.on('OverduePaymentsMarked', () => loadEvent());
 
     return () => { connection.stop(); };
@@ -145,11 +148,25 @@ export default function EventDetailPage() {
     }
   };
 
+  const handleDeleteExpense = async (expenseId) => {
+    if (!confirm('Xóa khoản chi phí này?')) return;
+    try {
+      await api.delete(`/event/${id}/expenses/${expenseId}`);
+      await loadEvent();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed');
+    }
+  };
+
   const formatMoney = (n) => new Intl.NumberFormat('vi-VN', {
     style: 'currency', currency: 'VND',
   }).format(n);
 
-  const formatDate = (d) => new Date(d).toLocaleString('vi-VN');
+  const formatDate = (d) => new Date(d).toLocaleString('vi-VN', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  });
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -159,17 +176,33 @@ export default function EventDetailPage() {
     }
   };
 
-  const buildQRUrl = () => {
-    const perPerson = event.participants?.length > 0
-      ? event.totalAmount / event.participants.length
-      : event.totalAmount;
-    const params = new URLSearchParams();
-    params.set('amount', Math.round(perPerson).toString());
-    if (event.bankCode) params.set('bankCode', event.bankCode);
-    if (event.bankAccountNumber) params.set('accountNumber', event.bankAccountNumber);
-    if (event.bankAccountName) params.set('accountName', event.bankAccountName);
-    params.set('content', `${event.title} - ${id.substring(0, 8)}`);
-    return `http://localhost:5000/api/event/${id}/qr?${params.toString()}`;
+  const loadQRImage = async () => {
+    setQrLoading(true);
+    try {
+      const perPerson = event.participants?.length > 0
+        ? event.totalAmount / event.participants.length
+        : event.totalAmount;
+      const params = new URLSearchParams();
+      params.set('amount', Math.round(perPerson).toString());
+      if (event.bankCode) params.set('bankCode', event.bankCode);
+      if (event.bankAccountNumber) params.set('accountNumber', event.bankAccountNumber);
+      if (event.bankAccountName) params.set('accountName', event.bankAccountName);
+      params.set('content', `${event.title} - ${id.substring(0, 8)}`);
+      const res = await api.get(`/event/${id}/qr?${params.toString()}`, { responseType: 'blob' });
+      const url = URL.createObjectURL(res.data);
+      setQrImageUrl(url);
+    } catch (err) {
+      setError('Không thể tải mã QR: ' + (err.response?.status || err.message));
+    } finally {
+      setQrLoading(false);
+    }
+  };
+
+  const handleToggleQR = () => {
+    if (!showQR && !qrImageUrl) {
+      loadQRImage();
+    }
+    setShowQR(!showQR);
   };
 
   if (loading) return (
@@ -278,7 +311,7 @@ export default function EventDetailPage() {
           <div className="section-card">
             <div className="section-header">
               <h3>🏦 Thông tin thanh toán</h3>
-              <button className="btn btn-primary btn-sm" onClick={() => setShowQR(!showQR)}>
+              <button className="btn btn-primary btn-sm" onClick={handleToggleQR}>
                 {showQR ? 'Ẩn QR' : '📱 Hiện QR Code'}
               </button>
             </div>
@@ -289,12 +322,19 @@ export default function EventDetailPage() {
             </div>
             {showQR && (
               <div className="qr-container">
-                <img
-                  src={buildQRUrl()}
-                  alt="QR Code (VietQR)"
-                  className="qr-image"
-                />
-                <p className="text-sm text-muted">Quét mã QR bằng app ngân hàng để thanh toán (VietQR)</p>
+                {qrLoading ? (
+                  <div className="loading-container" style={{ minHeight: '120px' }}>
+                    <div className="spinner"></div>
+                    <p>Đang tạo QR...</p>
+                  </div>
+                ) : qrImageUrl ? (
+                  <>
+                    <img src={qrImageUrl} alt="QR Code (VietQR)" className="qr-image" />
+                    <p className="text-sm text-muted">Quét mã QR bằng app ngân hàng để thanh toán (VietQR)</p>
+                  </>
+                ) : (
+                  <p className="text-muted">Không thể tải mã QR</p>
+                )}
               </div>
             )}
           </div>
@@ -398,7 +438,15 @@ export default function EventDetailPage() {
                     <div className="expense-desc">{exp.description}</div>
                     <div className="text-xs text-muted">{exp.createdByName} · {formatDate(exp.createdAt)}</div>
                   </div>
-                  <div className="expense-amount">{formatMoney(exp.amount)}</div>
+                  <div className="expense-item-right">
+                    <div className="expense-amount">{formatMoney(exp.amount)}</div>
+                    {isCreator && (
+                      <button className="btn btn-ghost btn-xs" onClick={() => handleDeleteExpense(exp.id)}
+                        title="Xóa chi phí">
+                        🗑
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

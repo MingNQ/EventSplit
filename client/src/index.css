@@ -732,6 +732,12 @@ body {
   color: var(--warning);
 }
 
+.expense-item-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 /* Countdown Timer */
 .countdown-banner {
   background: linear-gradient(135deg, rgba(108, 99, 255, 0.12) 0%, rgba(168, 85, 247, 0.08) 100%);
@@ -1056,5 +1062,210 @@ body {
   .notification-dropdown {
     width: 300px;
     right: -40px;
+  }
+}
+
+/* Expense Builder */
+.expense-builder {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.expense-builder-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: fadeIn 0.3s ease;
+}
+
+.expense-builder-desc {
+  flex: 1;
+  padding: 10px 14px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.expense-builder-desc:focus {
+  border-color: var(--accent);
+}
+
+.expense-builder-desc::placeholder {
+  color: var(--text-muted);
+}
+
+.expense-builder-amount-wrap {
+  position: relative;
+  min-width: 140px;
+}
+
+.expense-builder-amount {
+  width: 100%;
+  padding: 10px 30px 10px 14px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+  text-align: right;
+}
+
+.expense-builder-amount:focus {
+  border-color: var(--accent);
+}
+
+.expense-builder-amount::placeholder {
+  color: var(--text-muted);
+}
+
+.expense-builder-currency {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.expense-builder-remove {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  padding: 0 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  transition: all 0.2s;
+}
+
+.expense-builder-remove:hover:not(:disabled) {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-color: rgba(255, 61, 113, 0.3);
+}
+
+.expense-total-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+  padding: 14px 18px;
+  background: var(--gradient-accent);
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+}
+
+.expense-total-value {
+  font-size: 1.15rem;
+  font-weight: 800;
+  background: var(--gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Deadline Shortcuts */
+.deadline-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.deadline-shortcuts .btn {
+  transition: all 0.2s;
+}
+
+.deadline-shortcuts .btn:hover {
+  background: var(--gradient-accent);
+  border-color: var(--border-accent);
+  color: var(--accent);
+}
+
+/* Custom Checkbox */
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  padding: 6px 0;
+  user-select: none;
+}
+
+.checkbox-label input[type="checkbox"] {
+  display: none;
+}
+
+.checkbox-mark {
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  flex-shrink: 0;
+  position: relative;
+  transition: all 0.2s;
+  background: var(--bg-input);
+}
+
+.checkbox-label input[type="checkbox"]:checked+.checkbox-mark {
+  background: var(--gradient);
+  border-color: var(--accent);
+}
+
+.checkbox-label input[type="checkbox"]:checked+.checkbox-mark::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.checkbox-text {
+  font-weight: 600;
+  font-size: 0.95rem;
+  display: block;
+}
+
+.checkbox-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  display: block;
+  margin-top: 2px;
+}
+
+@media (max-width: 640px) {
+  .expense-builder-row {
+    flex-wrap: wrap;
+  }
+
+  .expense-builder-desc {
+    flex: 1 1 100%;
+  }
+
+  .expense-builder-amount-wrap {
+    flex: 1;
+    min-width: 100px;
+  }
+
+  .deadline-shortcuts {
+    gap: 6px;
   }
 }

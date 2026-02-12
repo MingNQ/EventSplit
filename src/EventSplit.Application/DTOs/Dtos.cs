@@ -14,8 +14,12 @@ public record CreateEventRequest(
     DateTime Deadline,
     string? BankCode,
     string? BankAccountNumber,
-    string? BankAccountName
+    string? BankAccountName,
+    bool CreatorJoins = false,
+    List<ExpenseItemRequest>? InitialExpenses = null
 );
+
+public record ExpenseItemRequest(string Description, decimal Amount);
 
 public record UpdateEventRequest(
     string Title,

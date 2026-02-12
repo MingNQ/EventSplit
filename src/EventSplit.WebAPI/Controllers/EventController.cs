@@ -130,7 +130,20 @@ public class EventController : ControllerBase
         catch (InvalidOperationException ex) { return BadRequest(new { error = ex.Message }); }
     }
 
-    [HttpPost("{id}/qr")]
+    [HttpDelete("{id}/expenses/{expenseId}")]
+    public async Task<IActionResult> DeleteExpense(Guid id, Guid expenseId)
+    {
+        try
+        {
+            await _eventService.DeleteExpenseAsync(id, expenseId, GetUserId());
+            await _hubContext.Clients.Group(id.ToString()).SendAsync("ExpenseDeleted", expenseId);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex) { return BadRequest(new { error = ex.Message }); }
+        catch (UnauthorizedAccessException ex) { return Forbid(); }
+    }
+
+    [HttpGet("{id}/qr")]
     public IActionResult GenerateQR(Guid id, [FromQuery] decimal amount, [FromQuery] string? content,
         [FromQuery] string? bankCode, [FromQuery] string? accountNumber, [FromQuery] string? accountName)
     {
