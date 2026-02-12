@@ -15,8 +15,9 @@ using EmailService = EventSplit.Infrastructure.Services.EmailService;
 var builder = WebApplication.CreateBuilder(args);
 
 // --- Database ---
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("Default") ?? "Data Source=eventsplit.db"));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
 builder.Services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
 
 // --- Services ---

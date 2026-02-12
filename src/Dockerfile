@@ -21,9 +21,6 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends tzdata && rm -rf /var/lib/apt/lists/*
 ENV TZ=Asia/Ho_Chi_Minh
 
-# Create data directory for SQLite
-RUN mkdir -p /app/data
-
 COPY --from=build /app/publish .
 
 # Expose port
@@ -31,6 +28,5 @@ EXPOSE 8080
 
 ENV ASPNETCORE_URLS=http://+:8080
 ENV ASPNETCORE_ENVIRONMENT=Production
-ENV ConnectionStrings__Default="Data Source=/app/data/eventsplit.db"
 
 ENTRYPOINT ["dotnet", "EventSplit.WebAPI.dll"]

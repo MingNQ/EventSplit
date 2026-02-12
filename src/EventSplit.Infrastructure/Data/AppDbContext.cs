@@ -31,7 +31,7 @@ public class AppDbContext : DbContext, IAppDbContext
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Title).HasMaxLength(300);
-            entity.Property(e => e.TotalAmount).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.TotalAmount).HasColumnType("numeric(18,2)");
             entity.HasOne(e => e.Creator)
                   .WithMany(u => u.CreatedEvents)
                   .HasForeignKey(e => e.CreatorId)
@@ -41,7 +41,7 @@ public class AppDbContext : DbContext, IAppDbContext
         modelBuilder.Entity<EventParticipant>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.AmountToPay).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.AmountToPay).HasColumnType("numeric(18,2)");
             entity.HasIndex(e => new { e.EventId, e.UserId }).IsUnique();
             entity.HasOne(e => e.Event)
                   .WithMany(ev => ev.Participants)
@@ -56,7 +56,7 @@ public class AppDbContext : DbContext, IAppDbContext
         modelBuilder.Entity<EventExpense>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Amount).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.Amount).HasColumnType("numeric(18,2)");
             entity.Property(e => e.Description).HasMaxLength(500);
             entity.HasOne(e => e.Event)
                   .WithMany(ev => ev.Expenses)

@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: eventsplit-api
+    runtime: docker
+    dockerfilePath: ./src/Dockerfile
+    dockerContext: ./src
+    plan: free
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ConnectionStrings__Default
+        fromDatabase:
+          name: eventsplit-db
+          property: connectionString
+      - key: Jwt__Key
+        generateValue: true
+      - key: Jwt__Issuer
+        value: EventSplit
+      - key: Jwt__Audience
+        value: EventSplit
+
+databases:
+  - name: eventsplit-db
+    plan: free
+    databaseName: eventsplit
+    user: eventsplit_user

@@ -6,11 +6,9 @@ services:
     container_name: eventsplit-api
     ports:
       - "5000:8080"
-    volumes:
-      - eventsplit-data:/app/data
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__Default=Data Source=/app/data/eventsplit.db
+      - ConnectionStrings__Default=Host=eventsplit-db;Port=5432;Database=eventsplit;Username=postgres;Password=${POSTGRES_PASSWORD:-postgres123}
       - Jwt__Key=${JWT_KEY:-EventSplitSuperSecretKey12345678!}
       - Jwt__Issuer=EventSplit
       - Jwt__Audience=EventSplit
@@ -18,7 +16,28 @@ services:
       - Email__SmtpPort=${SMTP_PORT:-587}
       - Email__From=${SMTP_FROM:-}
       - Email__Password=${SMTP_PASSWORD:-}
+    depends_on:
+      eventsplit-db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  eventsplit-db:
+    image: postgres:16-alpine
+    container_name: eventsplit-db
+    environment:
+      - POSTGRES_DB=eventsplit
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres123}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
 volumes:
-  eventsplit-data:
+  postgres-data:
