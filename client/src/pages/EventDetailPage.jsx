@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { HubConnectionBuilder } from '@microsoft/signalr';
-import api from '../services/api';
+import api, { API_BASE } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function EventDetailPage() {
@@ -67,7 +67,7 @@ export default function EventDetailPage() {
   useEffect(() => {
     const token = localStorage.getItem('token');
     const connection = new HubConnectionBuilder()
-      .withUrl(`http://localhost:5000/hubs/payment?access_token=${token}`)
+      .withUrl(`${API_BASE}/hubs/payment?access_token=${token}`)
       .withAutomaticReconnect()
       .build();
 

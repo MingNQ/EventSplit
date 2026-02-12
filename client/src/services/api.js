@@ -1,7 +1,9 @@
 import axios from 'axios';
 
+export const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: `${API_BASE}/api`,
 });
 
 // Flag to prevent multiple simultaneous refresh attempts
@@ -69,7 +71,7 @@ api.interceptors.response.use(
       }
 
       try {
-        const res = await axios.post('http://localhost:5000/api/auth/refresh', {
+        const res = await axios.post(`${API_BASE}/api/auth/refresh`, {
           refreshToken,
         });
 
