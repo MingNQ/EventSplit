@@ -18,6 +18,14 @@ services:
         value: EventSplit
       - key: Jwt__Audience
         value: EventSplit
+      - key: Email__SmtpHost
+        sync: false
+      - key: Email__SmtpPort
+        value: "587"
+      - key: Email__From
+        sync: false
+      - key: Email__Password
+        sync: false
 
 databases:
   - name: eventsplit-db
