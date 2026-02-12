@@ -16,8 +16,24 @@ var builder = WebApplication.CreateBuilder(args);
 
 // --- Database ---
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
+
+// Convert PostgreSQL URI format (from Render) to ADO.NET format (for Npgsql)
+static string ConvertConnectionString(string? connStr)
+{
+    if (string.IsNullOrEmpty(connStr)) 
+        throw new InvalidOperationException("Connection string 'Default' is not configured.");
+    
+    if (connStr.StartsWith("postgres://") || connStr.StartsWith("postgresql://"))
+    {
+        var uri = new Uri(connStr);
+        var userInfo = uri.UserInfo.Split(':');
+        return $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
+    }
+    return connStr;
+}
+
+var connectionString = ConvertConnectionString(builder.Configuration.GetConnectionString("Default"));
+builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
 builder.Services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
 
 // --- Services ---
